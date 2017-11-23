@@ -26,7 +26,7 @@ const int n_Ch = 7;
 
 float SP = 0.3125;
 float pe = 47.46;//mV*ns
-int wavesPrintRate = 999;
+int wavesPrintRate = 99;
 int ftPrintRate = 1000000;
 int trigPrintRate = 1000000;//100
 int signalPrintRate = 100000;//100
@@ -308,9 +308,18 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
 	  min[i]=hCh.GetMinimum();
 	  amp[i]=hCh.GetMaximum();
 	  
-	  getBL(&hCh, BL_output,0,30);
+	  getBL(&hCh, BL_output,0,75);
 	  BL[i] = BL_output[0];
 	  BL_RMS[i] = BL_output[1];
+	  
+	  for(int j=1;j<=hCh.GetXaxis()->GetNbins();j++){
+	    hCh.SetBinError(j,BL_RMS[i]);
+	  }
+	  hChtemp.at(i) = hCh;
+	  if(i<=5)t[i]=CDF(&hCh,fTrigFit,0.4);
+	  else t[i]=CDF(&hCh,fTrigFit,0.1);
+	  Integral_0_300[i] = (hCh.Integral(1, 1024, "width")-BL[i]*1024*SP)/pe;//Calculating Integral of histogram from 0 to 300ns; starting from bin 1 (0 is the overflow bin) to bin corresponding to 300ns. Option "width" multiplies by bin-width such that the integral is independant of the binning
+	  
 	  
 	  if(EventNumber%wavesPrintRate==0){
 	    if(i==0)cWaves.cd(3);
@@ -321,14 +330,12 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
 	    if(i==5)cWaves.cd(8);
 	    if(i==6)cWaves.cd(5);
 	    hCh.DrawCopy();
+	    TLine* ln = new TLine(t[i],-2000,t[i],2000);
+	    ln->SetLineColor(2);
+	    ln->Draw("same");
+	    //fTrigFit->DrawCopy("same");
+	    eventTrash.push_back(ln);
 	  }
-	  for(int j=1;j<=hCh.GetXaxis()->GetNbins();j++){
-	    hCh.SetBinError(j,BL_RMS[i]);
-	  }
-	  hChtemp.at(i) = hCh;
-	  t[i]=CDF(&hCh,fTrigFit,0.1);
-
-	  Integral_0_300[i] = (hCh.Integral(1, 1024, "width")-BL[i]*1024*SP)/pe;//Calculating Integral of histogram from 0 to 300ns; starting from bin 1 (0 is the overflow bin) to bin corresponding to 300ns. Option "width" multiplies by bin-width such that the integral is independant of the binning
 	  
 
 	 if(EventNumber%trigPrintRate==0&&(i<4)){
@@ -354,9 +361,9 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
 
        }//for nCh
 
-      trigT = (t[0]+t[1]+t[2]+t[3])/4;
-      trigTp = (t[0]+t[1]-t[2]-t[3])/4;
-      tPMT = t[5]-trigT;
+      trigT = (t[0]+t[1]+t[2]+t[3]+t[4]+t[5])/6;
+      trigTp = (t[0]+t[1]+t[4]-t[2]-t[3]-t[5])/6;
+      tPMT = t[6]-trigT;
       if(tPMT<-52){
 	t[5]=CDFinvert(&hChtemp.at(5),0.1);
 	tPMT = t[5]-trigT;
@@ -365,18 +372,19 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
       Integral[5] = integral(&hChtemp.at(5),t[5]-5,t[5]+65,BL[5])/pe;
       
 
-      trigGate = abs(*(std::max_element(t,t+4))-*(std::min_element(t,t+4)));  
+      trigGate = abs(*(std::max_element(t,t+6))-*(std::min_element(t,t+6)));  
       
       if(max[0]<1240&&max[1]<1240&&max[2]<1240&&max[3]<1240&&max[4]<1240&&max[5]<1240){
 	isTrig=1;
-//	if(isTrig&&BL[0]<1.1&&BL[1]<1.1&&BL[2]<1.1&&BL[3]<1.1){
-// // 	  isTrig=1;
-// // 	  if(trigT<140&&trigT>90&&trigGate<10){
+	if(isTrig&&Integral_0_300[0]>2&&Integral_0_300[1]>1.8&&Integral_0_300[2]>1.3&&Integral_0_300[3]>1.4&&Integral_0_300[4]>0.8&&Integral_0_300[5]>1){
+	  isTrig=1;
+// // 	  if(trigT<140&&trigT>90&&trigGate<15){
 // // 	    isTrig=1;
 // // 	  }
 // // 	  else isTrig=0;
-//	}
-//	else isTrig=0;
+	}
+	else if(min[0]>-5&&min[1]>-5&&min[2]>-5&&min[3]>-5&&min[4]>-5&&min[5]>-5) isTrig=1;
+	else isTrig=0;
       }
       else isTrig=0;
       if(isTrig==1){
@@ -392,6 +400,8 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
       }
       
       
+      //if(EventNumber%wavesPrintRate==0&&(tPMT>-10&&isTrig)){
+      //if(EventNumber%wavesPrintRate==0&&(tPMT<-20&&isTrig)){
       if(EventNumber%wavesPrintRate==0){
 	    //TString plotSaveName("");
 	    //plotSaveName.Form("%s/wave-%d.png",plotSaveFolder.Data(),EventNumber);
@@ -428,7 +438,7 @@ float CDF(TH1F* hWave, TF1* fTrigFit,float thr){
   float peak=hWave->GetMaximum();
   int timePos=1;
   float val = 0;
-  while(abs(val)<thr*peak){
+  while(val<thr*peak){
     timePos+=1;
     val = hWave->GetBinContent(timePos);
   }
