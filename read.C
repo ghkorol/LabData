@@ -26,7 +26,7 @@ const int n_Ch = 7;
 
 float SP = 0.3125;
 float pe = 47.46;//mV*ns
-int wavesPrintRate = 99;
+int wavesPrintRate = 1000000;
 int ftPrintRate = 1000000;
 int trigPrintRate = 1000000;//100
 int signalPrintRate = 100000;//100
@@ -365,11 +365,11 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
       trigTp = (t[0]+t[1]+t[4]-t[2]-t[3]-t[5])/6;
       tPMT = t[6]-trigT;
       if(tPMT<-52){
-	t[5]=CDFinvert(&hChtemp.at(5),0.1);
-	tPMT = t[5]-trigT;
+	t[6]=CDFinvert(&hChtemp.at(6),0.1);
+	tPMT = t[6]-trigT;
       }
       //tPMTi = iCFD(&hChtemp.at(5),trigT-55,2,BL[5])-trigT;
-      Integral[5] = integral(&hChtemp.at(5),t[5]-5,t[5]+65,BL[5])/pe;
+      Integral[6] = integral(&hChtemp.at(6),t[6]-5,t[6]+65,BL[6])/pe;
       
 
       trigGate = abs(*(std::max_element(t,t+6))-*(std::min_element(t,t+6)));  
@@ -402,6 +402,7 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
       
       //if(EventNumber%wavesPrintRate==0&&(tPMT>-10&&isTrig)){
       //if(EventNumber%wavesPrintRate==0&&(tPMT<-20&&isTrig)){
+      //if(EventNumber%wavesPrintRate==0&&isTrig&&tPMT>-2&&tPMT<-1){
       if(EventNumber%wavesPrintRate==0){
 	    //TString plotSaveName("");
 	    //plotSaveName.Form("%s/wave-%d.png",plotSaveFolder.Data(),EventNumber);
