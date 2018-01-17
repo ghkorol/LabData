@@ -70,6 +70,13 @@ int main(int argc, char *argv[]){
 
 void read(TString _inFileList, TString _inDataFolder, TString _outFile){
 
+  TH1D* h_weight = nullptr;
+  TFile f("weight.root");
+   f.GetObject("h_factor",h_weight);
+   h_weight->SetDirectory(0);
+  f.Close();
+
+  
   TF1* fTrigFit = new TF1("fTrigFit","gaus");
   fTrigFit->SetParameter(0,800);
   fTrigFit->SetParameter(2,1);
@@ -101,6 +108,7 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
   Int_t Millisecond = -999;
   Float_t trigT = -999;//t_trig = (t0+t1+t2+t3)/4
   Float_t tPMT = -999;
+  Float_t w = -999;
   Float_t tPMTi = -999;
   Float_t trigTp = -999;//t_trig' = [(t0+t1)-(t2+t3)]/4
   Int_t isTrig = -999;
@@ -185,6 +193,7 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
   tree->Branch("Millisecond",&Millisecond, "Millisecond/I");
   tree->Branch("trigT",&trigT, "trigT/F");
   tree->Branch("tPMT",&tPMT, "tPMT/F");
+  tree->Branch("w",&w, "w/F");
   tree->Branch("tPMTi",&tPMTi, "tPMTi/F");
 
   tree->Branch("trigGate",&trigGate,"trigGate/F");
@@ -230,7 +239,10 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
       char header[328];
       nitem=fread(header,1,328,pFILE);
       cout << "Header:\n" << header << endl;
+      
 
+      
+      
       char* word;
       word = strtok(header," \n");
       while(word != NULL){
@@ -249,6 +261,8 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
 	nitem=fread(&dummy,1,1,pFILE);
       }
 
+
+      
       int whileCounter = 0;
       while(nitem>0){ //event loop
       std::vector<TObject*> eventTrash;
@@ -369,6 +383,8 @@ void read(TString _inFileList, TString _inDataFolder, TString _outFile){
 	tPMT = t[6]-trigT;
       }
       //tPMTi = iCFD(&hChtemp.at(5),trigT-55,2,BL[5])-trigT;
+      w = h_weight->GetBinContent(h_weight->FindBin(Integral_0_300[6]));
+      
       Integral[6] = integral(&hChtemp.at(6),t[6]-5,t[6]+65,BL[6])/pe;
       
 
